@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 import css from "./App.module.css";
 
-import { fetchNotes, createNote, deleteNote } from "../../services/noteService";
+import { fetchNotes } from "../../services/noteService";
 
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
@@ -14,40 +14,25 @@ import NoteForm from "../NoteForm/NoteForm";
 const PER_PAGE = 12;
 
 export default function App() {
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [debouncedSearch] = useDebounce(search, 500);
-  const queryClient = useQueryClient();
 
   const { data } = useQuery({
-    queryKey: ["notes", page, debouncedSearch],
+    queryKey: ["notes", currentPage, debouncedSearch],
     queryFn: () =>
       fetchNotes({
-        page,
+        page: currentPage + 1,
         perPage: PER_PAGE,
-        search: debouncedSearch || undefined,
+        search: debouncedSearch,
       }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      setIsModalOpen(false);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-    },
+    placeholderData: { notes: [], totalPages: 1 },
   });
 
   const notes = data?.notes ?? [];
-  const totalPages = data?.totalPages ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   return (
     <div className={css.app}>
@@ -57,7 +42,8 @@ export default function App() {
         {totalPages > 1 && (
           <Pagination
             pageCount={totalPages}
-            onPageChange={(selected) => setPage(selected + 1)}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
           />
         )}
 
@@ -66,16 +52,11 @@ export default function App() {
         </button>
       </header>
 
-      {notes.length > 0 && (
-        <NoteList notes={notes} onDelete={(id) => deleteMutation.mutate(id)} />
-      )}
+      <NoteList notes={notes} />
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm
-            onCancel={() => setIsModalOpen(false)}
-            onSubmit={(values) => createMutation.mutate(values)}
-          />
+          <NoteForm onClose={() => setIsModalOpen(false)} />
         </Modal>
       )}
     </div>

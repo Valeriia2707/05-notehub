@@ -11,11 +11,20 @@ const modalRoot = document.body;
 
 export default function Modal({ children, onClose }: ModalProps) {
   useEffect(() => {
+    // Обробник клавіші Escape
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    // Блокування прокрутки
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow; // Відновлення прокрутки
+    };
   }, [onClose]);
 
   return createPortal(
